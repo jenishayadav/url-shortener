@@ -19,22 +19,50 @@ def create_short_url(current_user):
     session = db_session()
 
     def after_validation(long_url, expiry, usage_limit):
-        url_key = generate_random_string()
-        url_mapper = URLMapper(
-            user_id=current_user.id,
-            long_url=long_url,
-            url_key=url_key,
-            expiry_datetime=expiry,
-            usage_limit=usage_limit,
+        url_object = (
+            session.query(URLMapper).filter_by(long_url=long_url).first()
         )
-        session.add(url_mapper)
+        if not url_object:
+            while True:
+                url_key = generate_random_string()
+                existing = (
+                    session.query(URLMapper).filter_by(url_key=url_key).count()
+                )
+                if existing == 0:
+                    break
+            url_mapper = URLMapper(
+                user_id=current_user.id,
+                long_url=long_url,
+                url_key=url_key,
+                expiry_datetime=expiry,
+                usage_limit=usage_limit,
+            )
+            session.add(url_mapper)
+            session.commit()
+            data = {
+                "long_url": url_mapper.long_url,
+                "short_url": "/u/" + url_mapper.url_key,
+                "expiry": url_mapper.expiry_datetime.isoformat(),
+            }
+            response = (
+                standard_200_data_return(data),
+                200,
+            )
+            return response
+        url_object.expiry_datetime = expiry
+        if usage_limit:
+            url_object.usage_limit = usage_limit
+        session.add(url_object)
         session.commit()
         data = {
-            "long_url": url_mapper.long_url,
-            "short_url": "/u/" + url_mapper.url_key,
-            "expiry": url_mapper.expiry_datetime.isoformat(),
+            "long_url": url_object.long_url,
+            "short_url": "/u/" + url_object.url_key,
+            "expiry": url_object.expiry_datetime.isoformat(),
         }
-        response = standard_200_data_return(data), 200
+        response = (
+            standard_200_data_return(data, "This long_url already exist"),
+            200,
+        )
         return response
 
     try:
@@ -43,6 +71,7 @@ def create_short_url(current_user):
         long_url = data.get("long_url")
         if not long_url:
             raise ValueError("long_url is a required field")
+
         absolute_expiry = data.get("absolute_expiry")
         relative_expiry = data.get("relative_expiry")
         usage_limit = data.get("usage_limit")
@@ -85,10 +114,8 @@ def create_short_url(current_user):
 
 @app.route("/u/<string:url_key>", methods=["GET"])
 def redirect_short_url(url_key):
-    print("inside req")
     session = db_session()
     url_mapper = session.query(URLMapper).filter_by(url_key=url_key).first()
-    print("urlmapper id", url_mapper.id)
     if url_mapper:
         expiry_datetime = url_mapper.expiry_datetime
         usage_limit = url_mapper.usage_limit
@@ -102,7 +129,6 @@ def redirect_short_url(url_key):
             session.commit()
             return standard_404_return("URL not found"), 404
         else:
-            print("inside url_mapper")
             url_mapper.hit_count += 1
             long_url = url_mapper.long_url
             session.commit()

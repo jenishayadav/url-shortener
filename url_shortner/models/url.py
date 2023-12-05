@@ -12,7 +12,7 @@ class URLMapper(db.Model):
 
     id = mapped_column(Integer, primary_key=True, autoincrement=True)
     long_url = mapped_column(String)
-    url_key = mapped_column(String)
+    url_key = mapped_column(String, index=True)
     user_id = mapped_column(
         Integer,
         ForeignKey(User.id),

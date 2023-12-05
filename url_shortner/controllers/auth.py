@@ -55,8 +55,6 @@ def login_user():
             )
     except ValueError as err:
         response = standard_400_return(err), 400
-    # except Exception as err:
-    #     response = standard_500_return(err), 500
     finally:
         if session:
             session.close()
