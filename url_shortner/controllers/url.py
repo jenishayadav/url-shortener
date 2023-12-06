@@ -20,7 +20,7 @@ def create_short_url(current_user):
 
     def after_validation(long_url, expiry, usage_limit):
         url_object = (
-            session.query(URLMapper).filter_by(long_url=long_url).first()
+            session.query(URLMapper).filter_by(user_id=current_user.id,long_url=long_url).first()
         )
         if not url_object:
             while True:
@@ -127,7 +127,10 @@ def redirect_short_url(url_key):
             # NOTE: delete url_mapper obj from db
             session.delete(url_mapper)
             session.commit()
-            return standard_404_return("URL not found"), 404
+            return (
+                standard_404_return("URL not found, Usage limit exhausted"),
+                404,
+            )
         else:
             url_mapper.hit_count += 1
             long_url = url_mapper.long_url
