@@ -37,7 +37,7 @@ Make sure you have Docker and Docker Compose installed on your machine.
 3. Start the URL Shortener Service:
 
     ```bash
-    docker compose up -d url_shortener
+    docker compose up -d url_shortner
     ```
 
    This command starts the URL Shortener service in the background. The application APIs should now be accessible at [http://localhost:5000](http://localhost:5000).
